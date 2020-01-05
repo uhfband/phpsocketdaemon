@@ -1,0 +1,9 @@
+{
+  "name": "uhfband/phpsocketdaemon",
+  "license": "LGPL-2.1-or-later",
+  "autoload": {
+      "psr-4": {
+          "phpSocketDaemon\\": "src/"
+       }
+  }
+}

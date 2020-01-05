@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 phpSocketDaemon 1.0 - httpd server demo implementation
 Copyright (C) 2006 Chris Chabot <chabotc@xs4all.nl>
@@ -18,10 +18,9 @@ You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
-class httpdServer extends socketServer {
-}
 
-class httpdServerClient extends socketServerClient {
+
+class httpServerClient extends phpSocketDaemon\socketServerClient {
 	private $max_total_time = 45;
 	private $max_idle_time  = 15;
 	private $keep_alive = false;

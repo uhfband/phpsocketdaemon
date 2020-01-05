@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 phpSocketDaemon 1.0
 Copyright (C) 2006 Chris Chabot <chabotc@xs4all.nl>
@@ -18,6 +18,11 @@ You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
+
+namespace phpSocketDaemon;
+
+use phpSocketDaemon\socketException;
+
 abstract class socketClient extends socket {
 	public $remote_address = null;
 	public $remote_port    = null;

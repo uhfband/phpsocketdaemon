@@ -1,0 +1,8 @@
+{
+  "require": { 
+    "uhfband/phpsocketdaemon": "@dev"
+  },
+  "autoload":{
+    "classmap": ["src/"]
+  }
+}

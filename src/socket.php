@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 phpSocketDaemon 1.0
 Copyright (C) 2006 Chris Chabot <chabotc@xs4all.nl>
@@ -19,12 +19,9 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-require_once('socketClient.php');
-require_once('socketServer.php');
-require_once('socketServerClient.php');
-require_once('socketDaemon.php');
+namespace phpSocketDaemon;
 
-class socketException extends Exception {}
+use phpSocketDaemon\socketException;
 
 abstract class socket {
 	public $socket;

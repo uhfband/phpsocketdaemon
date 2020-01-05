@@ -1,4 +1,4 @@
-<?
+<?php
 /*
 phpSocketDaemon 1.0
 Copyright (C) 2006 Chris Chabot <chabotc@xs4all.nl>
@@ -19,6 +19,10 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+namespace phpSocketDaemon;
+
+use phpSocketDaemon\socketException;
+
 class socketDaemon {
 	public $servers = array();
 	public $clients = array();
@@ -26,7 +30,7 @@ class socketDaemon {
 	public function create_server($server_class, $client_class, $bind_address = 0, $bind_port = 0)
 	{
 		$server = new $server_class($client_class, $bind_address, $bind_port);
-		if (!is_subclass_of($server, 'socketServer')) {
+		if (!is_subclass_of($server, 'phpSocketDaemon\\socketServer')) {
 			throw new socketException("Invalid server class specified! Has to be a subclass of socketServer");
 		}
 		$this->servers[(int)$server->socket] = $server;
@@ -36,7 +40,7 @@ class socketDaemon {
 	public function create_client($client_class, $remote_address, $remote_port, $bind_address = 0, $bind_port = 0)
 	{
 		$client = new $client_class($bind_address, $bind_port);
-		if (!is_subclass_of($client, 'socketClient')) {
+		if (!is_subclass_of($client, 'phpSocketDaemon\\socketClient')) {
 			throw new socketException("Invalid client class specified! Has to be a subclass of socketClient");
 		}
 		$client->set_non_block(true);
@@ -118,17 +122,17 @@ class socketDaemon {
 			if ($events > 0) {
 				foreach ($read_set as $socket) {
 					$socket = $this->get_class($socket);
-					if (is_subclass_of($socket,'socketServer')) {
+					if (is_subclass_of($socket,'phpSocketDaemon\\socketServer')) {
 						$client = $socket->accept();
 						$this->clients[(int)$client->socket] = $client;
-					} elseif (is_subclass_of($socket, 'socketClient')) {
+					} elseif (is_subclass_of($socket, 'phpSocketDaemon\\socketClient')) {
 						// regular on_read event
 						$socket->read();
 					}
 				}
 				foreach ($write_set as $socket) {
 					$socket = $this->get_class($socket);
-					if (is_subclass_of($socket, 'socketClient')) {
+					if (is_subclass_of($socket, 'phpSocketDaemon\\socketClient')) {
 						if ($socket->connecting === true) {
 							$socket->on_connect();
 							$socket->connecting = false;
@@ -138,7 +142,7 @@ class socketDaemon {
 				}
 				foreach ($exception_set as $socket) {
 					$socket = $this->get_class($socket);
-					if (is_subclass_of($socket, 'socketClient')) {
+					if (is_subclass_of($socket, 'phpSocketDaemon\\socketClient')) {
 						$socket->on_disconnect();
 						if (isset($this->clients[(int)$socket->socket])) {
 							unset($this->clients[(int)$socket->socket]);
