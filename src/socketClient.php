@@ -44,7 +44,6 @@ abstract class socketClient extends socket {
 	public function write($buffer, $length = 4096)
 	{
 		$this->write_buffer .= $buffer;
-		$this->do_write();
 	}
 
 	public function do_write()

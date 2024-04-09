@@ -118,7 +118,9 @@ class socketDaemon {
 		$write_set     = $this->create_write_set();
 		$exception_set = $this->create_exception_set();
 		$event_time    = time();
-		while (($events = socket_select($read_set, $write_set, $exception_set, 2)) !== false) {
+
+		while (($events = socket_select($read_set, $write_set, $exception_set, 1)) !== false) {
+
 			if ($events > 0) {
 				foreach ($read_set as $socket) {
 					$socket = $this->get_class($socket);
@@ -150,6 +152,7 @@ class socketDaemon {
 					}
 				}
 			}
+
 			if (time() - $event_time > 1) {
 				// only do this if more then a second passed, else we'd keep looping this for every bit recieved
 				foreach ($this->clients as $socket) {
