@@ -107,7 +107,9 @@ abstract class socket {
 		if (!is_resource($this->socket)) {
 			throw new socketException("Invalid socket or resource");
 		} elseif (!@socket_connect($this->socket, $remote_address, $remote_port)) {
-			throw new socketException("Could not connect to {$remote_address} - {$remote_port}: ".$this->get_error());
+            if (socket_last_error($this->socket) !== SOCKET_EINPROGRESS) {
+			    throw new socketException("Could not connect to {$remote_address}:{$remote_port} - ".$this->get_error());
+            }
 		}
 	}
 

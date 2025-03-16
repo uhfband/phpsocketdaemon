@@ -153,7 +153,7 @@ class socketDaemon {
 				}
 			}
 
-			if (time() - $event_time > 1) {
+			if (time() - $event_time >= 1) {
 				// only do this if more then a second passed, else we'd keep looping this for every bit recieved
 				foreach ($this->clients as $socket) {
 					$socket->on_timer();
