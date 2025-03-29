@@ -19,11 +19,14 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-namespace phpSocketDaemon;
+namespace Uhf\PhpSocketDaemon;
 
-use phpSocketDaemon\socketException;
+abstract class Socket {
+	public const STATE_CONNECTING = 1;
+	public const STATE_CONNECTED  = 2;
+	public const STATE_DISCONNECTED = 3;
+	public const STATE_CLOSED = 4;
 
-abstract class socket {
 	public $socket;
 	public $bind_address;
 	public $bind_port;
@@ -34,6 +37,7 @@ abstract class socket {
 	public $local_port;
 	public $read_buffer    = '';
 	public $write_buffer   = '';
+	public $state;
 
 	public function __construct($bind_address = 0, $bind_port = 0, $domain = AF_INET, $type = SOCK_STREAM, $protocol = SOL_TCP)
 	{
@@ -43,18 +47,18 @@ abstract class socket {
 		$this->type         = $type;
 		$this->protocol     = $protocol;
 		if (($this->socket = @socket_create($domain, $type, $protocol)) === false) {
-			throw new socketException("Could not create socket: ".socket_strerror(socket_last_error($this->socket)));
+			throw new SocketException("Could not create socket: ".socket_strerror(socket_last_error($this->socket)));
 		}
 		if (!@socket_set_option($this->socket, SOL_SOCKET, SO_REUSEADDR, 1)) {
-			throw new socketException("Could not set SO_REUSEADDR: ".$this->get_error());
+			throw new SocketException("Could not set SO_REUSEADDR: ".$this->get_error());
 		}
 		if (!@socket_bind($this->socket, $bind_address, $bind_port)) {
-			throw new socketException("Could not bind socket to [$bind_address - $bind_port]: ".socket_strerror(socket_last_error($this->socket)));
+			throw new SocketException("Could not bind socket to [$bind_address - $bind_port]: ".socket_strerror(socket_last_error($this->socket)));
 		}
 		if (!@socket_getsockname($this->socket, $this->local_addr, $this->local_port)) {
-			throw new socketException("Could not retrieve local address & port: ".socket_strerror(socket_last_error($this->socket)));
+			throw new SocketException("Could not retrieve local address & port: ".socket_strerror(socket_last_error($this->socket)));
 		}
-		$this->set_non_block(true);
+		$this->set_non_block();
 	}
 
 	public function __destruct()
@@ -78,14 +82,15 @@ abstract class socket {
 			@socket_close($this->socket);
 		}
 		$this->socket = (int)$this->socket;
+		$this->state = self::STATE_CLOSED;
 	}
 
 	public function write($buffer, $length = 4096)
 	{
 		if (!is_resource($this->socket)) {
-			throw new socketException("Invalid socket or resource");
+			throw new SocketException("Invalid socket or resource");
 		} elseif (($ret = @socket_write($this->socket, $buffer, $length)) === false) {
-			throw new socketException("Could not write to socket: ".$this->get_error());
+			throw new SocketException("Could not write to socket: ".$this->get_error());
 		}
 		return $ret;
 	}
@@ -93,9 +98,10 @@ abstract class socket {
 	public function read($length = 4096)
 	{
 		if (!is_resource($this->socket)) {
-			throw new socketException("Invalid socket or resource");
-		} elseif (($ret = @socket_read($this->socket, $length, PHP_BINARY_READ)) == false) {
-			throw new socketException("Could not read from socket: ".$this->get_error());
+			throw new SocketException("Invalid socket or resource");
+		}
+		if (($ret = @socket_read($this->socket, $length, PHP_BINARY_READ)) == false) {
+			throw new SocketException("Could not read from socket: ".$this->get_error());
 		}
 		return $ret;
 	}
@@ -105,10 +111,13 @@ abstract class socket {
 		$this->remote_address = $remote_address;
 		$this->remote_port    = $remote_port;
 		if (!is_resource($this->socket)) {
-			throw new socketException("Invalid socket or resource");
-		} elseif (!@socket_connect($this->socket, $remote_address, $remote_port)) {
-            if (socket_last_error($this->socket) !== SOCKET_EINPROGRESS) {
-			    throw new socketException("Could not connect to {$remote_address}:{$remote_port} - ".$this->get_error());
+			throw new SocketException("Invalid socket or resource");
+		}
+		if (!@socket_connect($this->socket, $remote_address, $remote_port)) {
+			if (socket_last_error($this->socket) === SOCKET_EINPROGRESS) {
+				socket_clear_error($this->socket);
+			} else {
+			    throw new SocketException("Could not connect to {$remote_address}:{$remote_port} - " . $this->get_error());
             }
 		}
 	}
@@ -116,18 +125,20 @@ abstract class socket {
 	public function listen($backlog = 128)
 	{
 		if (!is_resource($this->socket)) {
-			throw new socketException("Invalid socket or resource");
-		} elseif (!@socket_listen($this->socket, $backlog)) {
-			throw new socketException("Could not listen to {$this->bind_address} - {$this->bind_port}: ".$this->get_error());
+			throw new SocketException("Invalid socket or resource");
+		}
+		if (!socket_listen($this->socket, $backlog)) {
+			throw new SocketException("Could not listen to {$this->bind_address} - {$this->bind_port}: " . $this->get_error());
 		}
 	}
 
 	public function accept()
 	{
 		if (!is_resource($this->socket)) {
-			throw new socketException("Invalid socket or resource");
-		} elseif (($client = socket_accept($this->socket)) === false) {
-			throw new socketException("Could not accept connection to {$this->bind_address} - {$this->bind_port}: ".$this->get_error());
+			throw new SocketException("Invalid socket or resource");
+		} 
+		if (($client = socket_accept($this->socket)) === false) {
+			throw new SocketException("Could not accept connection to {$this->bind_address} - {$this->bind_port}: " . $this->get_error());
 		}
 		return $client;
 	}
@@ -135,27 +146,39 @@ abstract class socket {
 	public function set_non_block()
 	{
 		if (!is_resource($this->socket)) {
-			throw new socketException("Invalid socket or resource");
-		} elseif (!@socket_set_nonblock($this->socket)) {
-			throw new socketException("Could not set socket non_block: ".$this->get_error());
+			throw new SocketException("Invalid socket or resource");
+		} 
+		if (!socket_set_nonblock($this->socket)) {
+			throw new SocketException("Could not set socket non_block: " . $this->get_error());
 		}
 	}
 
 	public function set_block()
 	{
 		if (!is_resource($this->socket)) {
-			throw new socketException("Invalid socket or resource");
-		} elseif (!@socket_set_block($this->socket)) {
-			throw new socketException("Could not set socket non_block: ".$this->get_error());
+			throw new SocketException("Invalid socket or resource");
+		} 
+		if (!socket_set_block($this->socket)) {
+			throw new SocketException("Could not set socket non_block: " . $this->get_error());
 		}
 	}
 
 	public function set_recieve_timeout($sec, $usec)
 	{
 		if (!is_resource($this->socket)) {
-			throw new socketException("Invalid socket or resource");
+			throw new SocketException("Invalid socket or resource");
 		} elseif (!@socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO, array("sec" => $sec, "usec" => $usec))) {
-			throw new socketException("Could not set socket recieve timeout: ".$this->get_error());
+			throw new SocketException("Could not set socket recieve timeout: ".$this->get_error());
+		}
+	}
+
+	public function set_send_timeout($sec, $usec)
+	{
+		if (!is_resource($this->socket)) {
+			throw new SocketException("Invalid socket or resource");
+		}
+		if (!@socket_set_option($this->socket, SOL_SOCKET, SO_SNDTIMEO, array("sec" => $sec, "usec" => $usec))) {
+			throw new SocketException("Could not set socket send timeout: ".$this->get_error());
 		}
 	}
 
@@ -163,9 +186,9 @@ abstract class socket {
 	{
 		$reuse = $reuse ? 1 : 0;
 		if (!is_resource($this->socket)) {
-			throw new socketException("Invalid socket or resource");
+			throw new SocketException("Invalid socket or resource");
 		} elseif (!@socket_set_option($this->socket, SOL_SOCKET, SO_REUSEADDR, $reuse)) {
-			throw new socketException("Could not set SO_REUSEADDR to '$reuse': ".$this->get_error());
+			throw new SocketException("Could not set SO_REUSEADDR to '$reuse': ".$this->get_error());
 		}
 	}
 }

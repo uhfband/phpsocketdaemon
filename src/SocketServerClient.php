@@ -19,11 +19,9 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-namespace phpSocketDaemon;
+namespace Uhf\PhpSocketDaemon;
 
-use phpSocketDaemon\socketException;
-
-abstract class socketServerClient extends socketClient {
+abstract class SocketServerClient extends SocketClient {
 	public $socket;
 	public $remote_address;
 	public $remote_port;
@@ -32,13 +30,15 @@ abstract class socketServerClient extends socketClient {
 
 	public function __construct($socket)
 	{
-		$this->socket         = $socket;
+		$this->socket = $socket;
 		if (!is_resource($this->socket)) {
-			throw new socketException("Invalid socket or resource");
-		} elseif (!socket_getsockname($this->socket, $this->local_addr, $this->local_port)) {
-			throw new socketException("Could not retrieve local address & port: ".socket_strerror(socket_last_error($this->socket)));
-		} elseif (!socket_getpeername($this->socket, $this->remote_address, $this->remote_port)) {
-			throw new socketException("Could not retrieve remote address & port: ".socket_strerror(socket_last_error($this->socket)));
+			throw new SocketException("Invalid socket or resource");
+		}
+		if (!socket_getsockname($this->socket, $this->local_addr, $this->local_port)) {
+			throw new SocketException("Could not retrieve local address & port: " . socket_strerror(socket_last_error($this->socket)));
+		}
+		if (!socket_getpeername($this->socket, $this->remote_address, $this->remote_port)) {
+			throw new SocketException("Could not retrieve remote address & port: " . socket_strerror(socket_last_error($this->socket)));
 		}
 		$this->set_non_block();
 		$this->on_connect();

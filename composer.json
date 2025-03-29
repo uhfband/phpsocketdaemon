@@ -1,9 +1,12 @@
 {
-  "name": "uhfband/phpsocketdaemon",
+  "name": "uhf/phpsocketdaemon",
   "license": "LGPL-2.1-or-later",
   "autoload": {
       "psr-4": {
-          "phpSocketDaemon\\": "src/"
+          "Uhf\\PhpSocketDaemon\\": "src/"
        }
+  },
+  "require": {
+    "php": ">=7.3"
   }
 }

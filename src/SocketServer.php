@@ -19,11 +19,9 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-namespace phpSocketDaemon;
+namespace Uhf\PhpSocketDaemon;
 
-use phpSocketDaemon\socketException;
-
-abstract class socketServer extends socket {
+abstract class SocketServer extends Socket {
 	protected $client_class;
 
 	public function __construct($client_class, $bind_address = 0, $bind_port = 0, $domain = AF_INET, $type = SOCK_STREAM, $protocol = SOL_TCP)
@@ -36,10 +34,11 @@ abstract class socketServer extends socket {
 	public function accept()
 	{
 		$client = new $this->client_class(parent::accept());
-		if (!is_subclass_of($client, 'phpSocketDaemon\\socketServerClient')) {
+		if (!($client instanceof SocketServerClient)) {
 			throw new socketException("Invalid serverClient class specified! Has to be a subclass of socketServerClient");
 		}
 		$this->on_accept($client);
+		
 		return $client;
 	}
 

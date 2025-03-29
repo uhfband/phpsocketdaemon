@@ -19,25 +19,26 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-namespace phpSocketDaemon;
+namespace Uhf\PhpSocketDaemon;
 
-use phpSocketDaemon\socketException;
-
-abstract class socketClient extends socket {
+abstract class SocketClient extends Socket {
 	public $remote_address = null;
 	public $remote_port    = null;
-	public $connecting     = false;
-	public $disconnected   = false;
+	public $connect_timeout = 0;
 	public $read_buffer    = '';
 	public $write_buffer   = '';
 
-	public function connect($remote_address, $remote_port)
+	public function connect($remote_address, $remote_port, $timeout = 0)
 	{
-		$this->connecting = true;
+		$this->state = self::STATE_CONNECTING;
+		if ($timeout > 0) {
+			$this->connect_timeout = time() + $timeout;
+		}
 		try {
 			parent::connect($remote_address, $remote_port);
-		} catch (socketException $e) {
-			echo "Caught exception: ".$e->getMessage()."\n";
+		} catch (SocketException $e) {
+			$this->close();
+			$this->on_connect_error($e->getMessage());
 		}
 	}
 
@@ -58,11 +59,8 @@ abstract class socketClient extends socket {
 			}
 			$this->on_write();
 			return true;
-		} catch (socketException $e) {
-			$old_socket         = (int)$this->socket;
+		} catch (SocketException $e) {
 			$this->close();
-			$this->socket       = $old_socket;
-			$this->disconnected = true;
 			$this->on_disconnect();
 			return false;
 		}
@@ -74,16 +72,14 @@ abstract class socketClient extends socket {
 		try {
 			$this->read_buffer .= parent::read($length);
 			$this->on_read();
-		} catch (socketException $e) {
-			$old_socket         = (int)$this->socket;
+		} catch (SocketException $e) {
 			$this->close();
-			$this->socket       = $old_socket;
-			$this->disconnected = true;
 			$this->on_disconnect();
 		}
 	}
 
 	public function on_connect() {}
+	public function on_connect_error($message) {}
 	public function on_disconnect() {}
 	public function on_read() {}
 	public function on_write() {}
