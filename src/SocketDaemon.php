@@ -42,11 +42,7 @@ class SocketDaemon {
 		if (!($client instanceof SocketClient)) {
 			throw new SocketException("Invalid client class specified! Has to be a subclass of SocketClient");
 		}
-		
-		//$client->set_send_timeout(5, 0); //TODO
-		//$client->set_recieve_timeout(5, 0); //TODO
-		//var_dump($client->socket);
-		//socket_set_timeout($client->socket, 5, 0); // 1ms
+
 		$client->connect($remote_address, $remote_port, $timeout);
 		self::$clients[(int)$client->socket] = $client;
 		
@@ -60,7 +56,6 @@ class SocketDaemon {
 			if ($socket->state !== Socket::STATE_CLOSED && $socket->state !== Socket::STATE_CONNECTING) {
 				$ret[] = $socket->socket;
 			}
-			//$ret[] = $socket->socket;
 		}
 		foreach (self::$servers as $socket) {
 			$ret[] = $socket->socket;
@@ -132,23 +127,12 @@ class SocketDaemon {
 
 	public static function process()
 	{
-		// if socketClient is in write set, and $socket->connecting === true, set connecting to false and call on_connect
-		$read_set      = self::create_read_set();
-		$write_set     = self::create_write_set();
+		$read_set = self::create_read_set();
+		$write_set = self::create_write_set();
 		$exception_set = self::create_exception_set();
-		$event_time    = time();
-
-		//printf("before: r=%d w=%d e=%d \n", count($read_set), count($write_set), count($exception_set));
-		//print_r($read_set);
-		//print_r($write_set);
-		//print_r($exception_set);
+		$event_time = time();
 
 		while (($events = socket_select($read_set, $write_set, $exception_set, 1)) !== false) {
-			//echo "Events: $events\n";
-			//print_r($read_set);
-			//print_r($write_set);
-			//print_r($exception_set);
-			//printf("events=%d r=%d w=%d e=%d \n", $events, count($read_set), count($write_set), count($exception_set));
 
 			if ($events > 0) {
 				
@@ -158,7 +142,6 @@ class SocketDaemon {
 						$client = $socket->accept();
 						self::$clients[(int)$client->socket] = $client;
 					} elseif($socket instanceof SocketClient) {
-						// regular on_read event
 						$socket->read();
 					}
 				}
@@ -170,14 +153,13 @@ class SocketDaemon {
 							if ($code = socket_get_option($socket->socket, SOL_SOCKET, SO_ERROR)) {
 								$socket->close();
 								$socket->on_connect_error(sprintf("[%d] %s", $code, socket_strerror($code)));
-								//continue;
 							} else {
 								$socket->state = Socket::STATE_CONNECTED;
 								$socket->on_connect();	
 							}
-							continue;
+						} else {
+							$socket->do_write();
 						}
-						$socket->do_write();
 					}
 				}
 				
@@ -202,17 +184,15 @@ class SocketDaemon {
 				foreach (self::$clients as $socket) {
 					$socket->on_timer();
 				}
-				//TODO servers
 				$event_time = time();
 			}
 			
 			self::clean_sockets();
-			$read_set      = self::create_read_set();
-			$write_set     = self::create_write_set();
+			$read_set = self::create_read_set();
+			$write_set = self::create_write_set();
 			$exception_set = self::create_exception_set();
 
 			if (empty($read_set) && empty($write_set) && empty($exception_set)) {
-				// no more sockets left, bail out
 				echo "No more sockets left, exiting\n";
 				break;
 			}
